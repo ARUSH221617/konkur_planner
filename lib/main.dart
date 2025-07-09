@@ -6,10 +6,7 @@ import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 import 'package:konkur_planner/database/database_helper.dart';
 import 'package:konkur_planner/providers/app_data_provider.dart';
-import 'package:konkur_planner/screens/ai_agent_screen.dart';
-import 'package:konkur_planner/screens/my_plan_screen.dart';
-import 'package:konkur_planner/screens/my_subjects_screen.dart';
-import 'package:konkur_planner/screens/syllabus_breakdown_screen.dart';
+import 'package:konkur_planner/routing/app_router.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,7 +30,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return ChangeNotifierProvider(
       create: (context) => AppDataProvider(),
-      child: MaterialApp(
+      child: MaterialApp.router(
         title: 'Konkur AI Study Planner',
         theme: ThemeData(
           primarySwatch: Colors.blueGrey,
@@ -62,63 +59,7 @@ class MyApp extends StatelessWidget {
             labelSmall: TextStyle(fontFamily: 'IRANSans'),
           ),
         ),
-        home: const MainScreen(),
-      ),
-    );
-  }
-}
-
-class MainScreen extends StatefulWidget {
-  const MainScreen({super.key});
-
-  @override
-  State<MainScreen> createState() => _MainScreenState();
-}
-
-class _MainScreenState extends State<MainScreen> {
-  int _selectedIndex = 0;
-
-  static const List<Widget> _widgetOptions = <Widget>[
-    AIAgentScreen(),
-    SyllabusBreakdownScreen(),
-    MySubjectsScreen(),
-    MyPlanScreen(),
-  ];
-
-  void _onItemTapped(int index) {
-    setState(() {
-      _selectedIndex = index;
-    });
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(child: _widgetOptions.elementAt(_selectedIndex)),
-      bottomNavigationBar: BottomNavigationBar(
-        items: const <BottomNavigationBarItem>[
-          BottomNavigationBarItem(
-            icon: Icon(Icons.auto_awesome),
-            label: 'هوش مصنوعی',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.menu_book),
-            label: 'بودجه بندی',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.checklist),
-            label: 'درس های من',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.calendar_today),
-            label: 'برنامه من',
-          ),
-        ],
-        currentIndex: _selectedIndex,
-        selectedItemColor: Theme.of(context).colorScheme.primary,
-        unselectedItemColor: Colors.grey,
-        onTap: _onItemTapped,
-        type: BottomNavigationBarType.fixed,
+        routerConfig: router,
       ),
     );
   }

@@ -152,14 +152,16 @@ The application's user experience is centered around four main pages:
 The project adheres to a standard Flutter application structure, ensuring maintainability and scalability. Key directories and files are organized as follows:
 
 - **`lib/`**: This is the heart of the application, containing all Dart source code.
-    - **`main.dart`**: The main entry point that initializes and runs the Flutter application.
+    - **`main.dart`**: The main entry point that initializes and runs the Flutter application. It now uses `MaterialApp.router` and delegates routing logic to `lib/routing/app_router.dart`.
+    - **`routing/`**: Contains all navigation and routing logic for the application.
+        - **`app_router.dart`**: Defines the `GoRouter` configuration, including routes, sub-routes, and `ShellRoute` for persistent UI elements like the bottom navigation bar.
     - **`constants/`**: Stores application-wide constants, such as API keys (though sensitive keys should be managed via secure means like environment variables in actual builds), UI theme colors, string literals, or fixed configuration values (e.g., `app_constants.dart`).
     - **`database/`**: Contains code related to local data persistence, primarily `database_helper.dart` which manages SQLite database creation, schema, and CRUD (Create, Read, Update, Delete) operations.
     - **`models/`**: Defines the data structures or classes that represent the application's entities, such as `study_task.dart`, `topic.dart`, and `user_selection.dart`. These models dictate how data is structured and handled within the app.
     - **`providers/`**: Manages application state using the `provider` package. Files like `app_data_provider.dart` would hold and expose application-wide state, allowing different parts of the UI to react to data changes.
-    - **`screens/`**: Contains the Dart files for each distinct UI screen or page of the application, such as `ai_agent_screen.dart`, `my_plan_screen.dart`, `my_subjects_screen.dart`, and `syllabus_breakdown_screen.dart`.
+    - **`screens/`**: Contains the Dart files for each distinct UI screen or page of the application, such as `ai_agent_screen.dart`, `my_plan_screen.dart`, `my_subjects_screen.dart`, and `syllabus_breakdown_screen.dart`. These are now navigated to using `go_router`.
     - **`services/`**: Houses services that interact with external systems or provide background functionalities. This includes `gemini_service.dart` for communications with the Gemini API and `notification_service.dart` for managing local push notifications.
-    - **`widgets/`** (Assumed, common practice): Although not explicitly listed in the initial file tree, a `widgets/` directory is typically present for reusable UI components shared across multiple screens.
+    - **`widgets/`** (Assumed, common practice): Although not explicitly listed in the initial file tree, a `widgets/` directory is typically present for reusable UI components shared across multiple screens. The `MainShell` widget, which includes the `BottomNavigationBar` and is used by `go_router`, could be considered part of this or within the `routing` directory.
     - **`utils/`** (If present): For utility functions, helper classes, or extensions that don't fit into other specific categories (e.g., date formatters, input validators).
 
 - **`assets/`**: Stores static assets used by the application.
@@ -209,6 +211,34 @@ The effectiveness of the Konkur AI Study Planner stems from a smart interaction 
     *   The application's notification service (`NotificationService`) then schedules local push reminders for all new "pending" tasks in the updated plan, ensuring the user stays informed and on track.
 
 This continuous cycle of input -> AI processing -> structured output -> app integration -> user feedback -> refined input allows the study plans to become increasingly personalized and effective over time.
+
+## Navigation
+
+The application uses the `go_router` package for declarative routing. The main navigation structure is defined in `lib/routing/app_router.dart`.
+
+- **Main Screens:** The four main screens (AI Agent, Syllabus, My Subjects, My Plan) are implemented as top-level routes within a `ShellRoute`.
+- **`ShellRoute`:** This is used to maintain the `BottomNavigationBar` across the main screens. The `MainShell` widget in `lib/routing/app_router.dart` builds the `Scaffold` with the `BottomNavigationBar` and displays the current child route.
+- **Adding New Routes:**
+    - To add a new top-level screen accessible from the `BottomNavigationBar`, add a new `GoRoute` to the `routes` list within the `ShellRoute` in `app_router.dart`. Update the `MainShell`'s `BottomNavigationBar` and its `_calculateSelectedIndex` and `_onItemTapped` methods accordingly.
+    - To add a sub-route (e.g., a detail screen navigated from one of the main screens), add it as a sub-route to one of the existing `GoRoute` definitions. For example:
+      ```dart
+      GoRoute(
+        path: '/my-plan',
+        name: 'myPlan',
+        builder: (context, state) => const MyPlanScreen(),
+        routes: [
+          GoRoute(
+            path: 'task-details/:taskId', // Example: /my-plan/task-details/123
+            name: 'taskDetails',
+            builder: (context, state) {
+              final taskId = state.pathParameters['taskId']!;
+              return TaskDetailsScreen(taskId: taskId);
+            },
+          ),
+        ],
+      ),
+      ```
+- **Navigating:** Use `GoRouter.of(context).go('/path')` or `GoRouter.of(context).goNamed('routeName')` for navigation. For passing parameters, refer to the `go_router` documentation.
 
 ## Local Database (SQLite) Schema
 
