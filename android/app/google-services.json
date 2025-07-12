@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "888878558688",
+    "project_id": "konkur-planner",
+    "storage_bucket": "konkur-planner.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:888878558688:android:8a5b81377be11644aa0f85",
+        "android_client_info": {
+          "package_name": "com.example.konkur_planner"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCArC35RbHAyuySlxnfjsAu-4gaptd1t38"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
