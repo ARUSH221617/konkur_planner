@@ -25,7 +25,7 @@ class DatabaseHelper {
     String path = join(await getDatabasesPath(), 'konkur_planner.db');
     return await openDatabase(
       path,
-      version: 2,
+      version: 3, // Increment database version for multi-chat
       onCreate: _onCreate,
       onUpgrade: _onUpgrade,
     );
@@ -71,12 +71,22 @@ class DatabaseHelper {
     ''');
 
     await db.execute('''
+      CREATE TABLE IF NOT EXISTS chat_sessions(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+      )
+    ''');
+
+    await db.execute('''
       CREATE TABLE IF NOT EXISTS chat_history(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
+        chat_session_id INTEGER NOT NULL,
         sender TEXT,
         message_type TEXT,
         message TEXT,
-        timestamp INTEGER
+        timestamp INTEGER,
+        FOREIGN KEY (chat_session_id) REFERENCES chat_sessions(id) ON DELETE CASCADE
       )
     ''');
 
@@ -88,9 +98,9 @@ class DatabaseHelper {
 
   Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
     if (oldVersion < 2) {
-      // This means the database was created with version 1 or earlier, and needs the message_type column.
+      // This block handles migration from version 1 to 2 (adding message_type to chat_history)
       // The simplest way to handle this for chat_history is to drop and recreate the table.
-      // This will clear existing chat history.
+      // This will clear existing chat history from version 1.
       await db.execute('DROP TABLE IF EXISTS chat_history');
       await db.execute('''
         CREATE TABLE chat_history(
@@ -102,11 +112,72 @@ class DatabaseHelper {
         )
       ''');
     }
+
+    if (oldVersion < 3) {
+      // This block handles migration from version 2 to 3 (adding multi-chat support)
+
+      // 1. Create the new chat_sessions table
+      await db.execute('''
+        CREATE TABLE IF NOT EXISTS chat_sessions(
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          title TEXT NOT NULL,
+          created_at INTEGER NOT NULL
+        )
+      ''');
+
+      // 2. Check if chat_history table exists and if it has the chat_session_id column
+      // This is a bit tricky as we need to check for column existence.
+      // A simpler approach for this specific migration is to assume if oldVersion < 3,
+      // the chat_history table does NOT have chat_session_id.
+      // We will rename the old table, create the new one, and migrate data.
+
+      bool chatHistoryExists = false;
+      try {
+        await db.query('chat_history', limit: 0); // Check if table exists
+        chatHistoryExists = true;
+      } catch (e) {
+        // Table does not exist
+      }
+
+      if (chatHistoryExists) {
+        // Rename old chat_history table
+        await db.execute('ALTER TABLE chat_history RENAME TO chat_history_old');
+
+        // Create the new chat_history table with chat_session_id
+        await db.execute('''
+          CREATE TABLE chat_history(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            chat_session_id INTEGER NOT NULL,
+            sender TEXT,
+            message_type TEXT,
+            message TEXT,
+            timestamp INTEGER,
+            FOREIGN KEY (chat_session_id) REFERENCES chat_sessions(id) ON DELETE CASCADE
+          )
+        ''');
+
+        // Insert a default chat session for existing messages
+        final defaultSessionId = await db.insert('chat_sessions', {
+          'title': 'Default Chat',
+          'created_at': DateTime.now().millisecondsSinceEpoch,
+        });
+
+        // Copy data from old chat_history to new chat_history, assigning to default session
+        await db.execute('''
+          INSERT INTO chat_history (chat_session_id, sender, message_type, message, timestamp)
+          SELECT ?, sender, message_type, message, timestamp FROM chat_history_old
+        ''', [defaultSessionId]);
+
+        // Drop the old chat_history table
+        await db.execute('DROP TABLE IF EXISTS chat_history_old');
+      }
+    }
   }
 
-  Future<void> insertChatMessage(String sender, String messageType, String message) async {
+  Future<int> insertChatMessage(int chatSessionId, String sender, String messageType, String message) async {
     final db = await database;
-    await db.insert('chat_history', {
+    return await db.insert('chat_history', {
+      'chat_session_id': chatSessionId,
       'sender': sender,
       'message_type': messageType,
       'message': message,
@@ -114,14 +185,56 @@ class DatabaseHelper {
     });
   }
 
-  Future<List<Map<String, dynamic>>> getChatHistory() async {
+  Future<List<Map<String, dynamic>>> getChatHistory(int chatSessionId) async {
     final db = await database;
-    return await db.query('chat_history', orderBy: 'timestamp ASC');
+    return await db.query(
+      'chat_history',
+      where: 'chat_session_id = ?',
+      whereArgs: [chatSessionId],
+      orderBy: 'timestamp ASC',
+    );
   }
 
-  Future<void> deleteAllChatMessages() async {
+  Future<void> deleteAllChatMessages(int chatSessionId) async {
     final db = await database;
-    await db.delete('chat_history');
+    await db.delete(
+      'chat_history',
+      where: 'chat_session_id = ?',
+      whereArgs: [chatSessionId],
+    );
+  }
+
+  Future<int> insertChatSession(String title) async {
+    final db = await database;
+    return await db.insert('chat_sessions', {
+      'title': title,
+      'created_at': DateTime.now().millisecondsSinceEpoch,
+    });
+  }
+
+  Future<List<Map<String, dynamic>>> getChatSessions() async {
+    final db = await database;
+    return await db.query('chat_sessions', orderBy: 'created_at DESC');
+  }
+
+  Future<void> deleteChatSession(int chatSessionId) async {
+    final db = await database;
+    await db.delete(
+      'chat_sessions',
+      where: 'id = ?',
+      whereArgs: [chatSessionId],
+    );
+    // ON DELETE CASCADE will handle deleting associated chat_history messages
+  }
+
+  Future<void> updateChatSessionTitle(int sessionId, String newTitle) async {
+    final db = await database;
+    await db.update(
+      'chat_sessions',
+      {'title': newTitle},
+      where: 'id = ?',
+      whereArgs: [sessionId],
+    );
   }
 
   Future<void> setUserSetting(String key, String value) async {

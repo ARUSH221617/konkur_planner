@@ -104,7 +104,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                     ),
                     onPressed: () {
-                      print(tempPickedDate ?? Jalali.now());
+                      debugPrint((tempPickedDate ?? Jalali.now()) as String?);
                       Navigator.of(context).pop(tempPickedDate ?? Jalali.now());
                     },
                   ),
