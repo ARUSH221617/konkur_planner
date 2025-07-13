@@ -3,24 +3,24 @@ import 'dart:io' show Platform;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:persian_datetime_picker/persian_datetime_picker.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:konkur_planner/database/database_helper.dart';
 import 'package:konkur_planner/providers/app_data_provider.dart';
 import 'package:konkur_planner/routing/app_router.dart';
+import 'package:konkur_planner/services/notification_service.dart';
+import 'package:persian_datetime_picker/persian_datetime_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
 
 import 'firebase_options.dart';
-import 'package:konkur_planner/services/notification_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await dotenv.load(fileName: ".env");
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  await NotificationService().init(); // Initialize NotificationService
+  await NotificationService().init();
   if (kIsWeb) {
     // Initialize for web
     databaseFactory = databaseFactoryFfiWeb;
