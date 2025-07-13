@@ -258,15 +258,14 @@ class AIService {
             'The AI mentioned a topic not found in the syllabus: "${item['topic_name']}"',
           ),
         );
-        tasks.add(
-          StudyTask(
-            topicId: topic.id!,
-            taskDate: item['task_date'],
-            startTime: item['start_time'],
-            endTime: item['end_time'],
-            taskType: item['task_type'],
-          ),
+        final studyTask = StudyTask(
+          topicId: topic.id!,
+          taskDate: item['task_date'],
+          startTime: item['start_time'],
+          endTime: item['end_time'],
+          taskType: item['task_type'],
         );
+        tasks.add(studyTask);
       }
       return tasks;
     } on FormatException catch (e) {

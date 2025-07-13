@@ -30,6 +30,7 @@ class _MyPlanScreenState extends State<MyPlanScreen> {
       context,
       listen: false,
     ).updateTaskStatus(task.id!, 'in_progress');
+    _notificationService.cancelNotification(task.hashCode); // Cancel notification when starting
 
     // Navigate to TimerScreen and wait for it to pop
     final result = await Navigator.of(
@@ -41,6 +42,7 @@ class _MyPlanScreenState extends State<MyPlanScreen> {
         context,
         listen: false,
       ).updateTaskStatus(task.id!, 'paused');
+      _notificationService.cancelNotification(task.hashCode); // Cancel notification when paused
     } else {
       // After returning from TimerScreen, show feedback dialog
       _showFeedbackDialog(task);
@@ -75,6 +77,7 @@ class _MyPlanScreenState extends State<MyPlanScreen> {
                   context,
                   listen: false,
                 ).updateTaskStatus(task.id!, 'completed');
+                _notificationService.cancelNotification(task.hashCode); // Cancel notification on completion
                 Navigator.of(context).pop();
               },
             ),

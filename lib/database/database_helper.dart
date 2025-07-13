@@ -4,6 +4,7 @@ import '../models/topic.dart';
 import '../models/user_selection.dart';
 import '../models/study_task.dart';
 import '../constants/app_constants.dart';
+import '../services/notification_service.dart';
 
 class DatabaseHelper {
   static final DatabaseHelper _instance = DatabaseHelper._internal();
@@ -286,7 +287,23 @@ class DatabaseHelper {
 
   Future<void> insertStudyTask(StudyTask task) async {
     final db = await database;
-    await db.insert('study_tasks', task.toMap());
+    final id = await db.insert('study_tasks', task.toMap());
+
+    // Schedule notification for the newly inserted task
+    final topic = (await getTopics()).firstWhere((t) => t.id == task.topicId);
+    final DateTime scheduledDateTime = DateTime.parse(
+        "${task.taskDate} ${task.startTime}:00"); // Assuming HH:MM format
+
+    // Only schedule if the task is in the future
+    if (scheduledDateTime.isAfter(DateTime.now())) {
+      NotificationService().scheduleNotification(
+        id: id, // Use the actual ID from the database
+        title: "Konkur Planner: ${task.taskType} Reminder",
+        body: "Topic: ${topic.name} - ${task.startTime} to ${task.endTime}",
+        scheduledDate: scheduledDateTime,
+        payload: id.toString(),
+      );
+    }
   }
 
   Future<List<StudyTask>> getStudyTasks() async {
@@ -354,6 +371,7 @@ class DatabaseHelper {
   Future<void> deleteAllTasks() async {
     final db = await database;
     await db.delete('study_tasks');
+    NotificationService().cancelAllNotifications(); // Cancel all notifications when tasks are deleted
   }
 
   Future<List<Map<String, dynamic>>> getStudyTasksWithTopicDetails() async {
