@@ -49,5 +49,9 @@
 		<true/>
 		<key>UIViewControllerBasedStatusBarAppearance</key>
 		<false/>
+		<key>NSSpeechRecognitionUsageDescription</key>
+		<string>This app uses speech recognition to convert your voice to text.</string>
+		<key>NSMicrophoneUsageDescription</key>
+		<string>This app uses the microphone to capture your voice for speech-to-text.</string>
 	</dict>
 </plist>

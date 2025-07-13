@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+
 import '../database/database_helper.dart';
+import '../models/chat_session.dart'; // Import ChatSession model
+import '../models/study_task.dart';
 import '../models/topic.dart';
 import '../models/user_selection.dart';
-import '../models/study_task.dart';
-import '../models/chat_session.dart'; // Import ChatSession model
 
 class AppDataProvider with ChangeNotifier {
   List<Topic> _topics = [];
@@ -27,7 +28,8 @@ class AppDataProvider with ChangeNotifier {
   }
 
   Future<void> _loadData() async {
-    await _dbHelper.database; // Ensure database is initialized and topics are inserted
+    await _dbHelper
+        .database; // Ensure database is initialized and topics are inserted
     _topics = await _dbHelper.getTopics();
     _userSelections = await _dbHelper.getUserSelections();
     _studyTasks = await _dbHelper.getStudyTasks();
@@ -77,19 +79,30 @@ class AppDataProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> addChatMessage(String sender, String messageType, String message) async {
+  Future<void> addChatMessage(
+    String sender,
+    String messageType,
+    String message,
+  ) async {
     if (_currentChatSessionId == null) {
       // This should ideally not happen if _loadData is called correctly,
       // but as a fallback, create a default session.
       await createNewChatSession('Default Chat');
     }
-    await _dbHelper.insertChatMessage(_currentChatSessionId!, sender, messageType, message);
+    await _dbHelper.insertChatMessage(
+      _currentChatSessionId!,
+      sender,
+      messageType,
+      message,
+    );
     await refreshData();
   }
 
   Future<void> deleteAllChatMessages() async {
     if (_currentChatSessionId != null) {
-      await _dbHelper.deleteAllChatMessages(_currentChatSessionId!); // Delete messages for current session
+      await _dbHelper.deleteAllChatMessages(
+        _currentChatSessionId!,
+      ); // Delete messages for current session
       await refreshData();
     }
   }
@@ -135,7 +148,10 @@ class AppDataProvider with ChangeNotifier {
   }
 
   Future<void> setUserBirthdate(DateTime birthdate) async {
-    await _dbHelper.setUserSetting('userBirthdate', birthdate.toIso8601String());
+    await _dbHelper.setUserSetting(
+      'userBirthdate',
+      birthdate.toIso8601String(),
+    );
     notifyListeners();
   }
 
@@ -165,14 +181,27 @@ class AppDataProvider with ChangeNotifier {
       _chatSessions = await _dbHelper.getChatSessions().then(
         (maps) => maps.map((e) => ChatSession.fromMap(e)).toList(),
       );
-      _currentChatSessionId = _chatSessions.isNotEmpty ? _chatSessions.first.id : null;
+      _currentChatSessionId = _chatSessions.isNotEmpty
+          ? _chatSessions.first.id
+          : null;
     }
     await refreshData();
   }
 
   Future<void> updateChatSessionTitle(int sessionId, String newTitle) async {
     await _dbHelper.updateChatSessionTitle(sessionId, newTitle);
-    await refreshData();
+    final sessionIndex = _chatSessions.indexWhere(
+      (session) => session.id == sessionId,
+    );
+    if (sessionIndex != -1) {
+      final oldSession = _chatSessions[sessionIndex];
+      _chatSessions[sessionIndex] = ChatSession(
+        id: oldSession.id,
+        title: newTitle,
+        createdAt: oldSession.createdAt,
+      );
+    }
+    notifyListeners();
   }
 
   Future<void> deleteAllTasks() async {

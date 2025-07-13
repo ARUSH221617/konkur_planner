@@ -1,13 +1,19 @@
+import 'dart:async';
 import 'dart:convert';
+
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:firebase_ai/firebase_ai.dart' as fb_ai;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:provider/provider.dart';
-import 'package:firebase_ai/firebase_ai.dart';
 import 'package:share_plus/share_plus.dart';
-import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:speech_to_text/speech_to_text.dart' as stt;
+
+import '../models/chat_session.dart';
+import '../models/study_task.dart';
 import '../providers/app_data_provider.dart';
 import '../services/ai_service.dart';
-import '../models/study_task.dart';
 
 class AIAgentScreen extends StatefulWidget {
   const AIAgentScreen({super.key});
@@ -22,16 +28,21 @@ class _AIAgentScreenState extends State<AIAgentScreen>
   final ScrollController _scrollController = ScrollController();
   final FocusNode _inputFocusNode = FocusNode();
   late final AIService _aiService;
-  AnimationController? _fabAnimationController;
-  AnimationController? _messageAnimationController;
-  Animation<double>? _fabAnimation;
-  ChatSession? _chatSession;
+  late final AnimationController _fabAnimationController;
+  late final AnimationController _dotAnimationController;
+
+  late final Animation<double> _fabAnimation;
+  fb_ai.ChatSession? _chatSession;
   bool _isLoading = false;
   bool _isChatStarted = false;
   bool _isInputFocused = false;
   final List<Map<String, dynamic>> _messages = [];
   bool _showScrollToBottom = false;
   double _previousScrollPosition = 0;
+  StreamSubscription? _streamSubscription;
+  late final stt.SpeechToText _speech;
+  bool _isListening = false;
+  String _text = '';
 
   @override
   void initState() {
@@ -41,60 +52,73 @@ class _AIAgentScreenState extends State<AIAgentScreen>
       duration: const Duration(milliseconds: 500),
       vsync: this,
     );
-    _messageAnimationController = AnimationController(
-      duration: const Duration(milliseconds: 300),
+    _dotAnimationController = AnimationController(
       vsync: this,
-    );
+      duration: const Duration(milliseconds: 1500),
+    )..repeat();
     _fabAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
-        parent: _fabAnimationController!,
+        parent: _fabAnimationController,
         curve: Curves.elasticOut,
       ),
     );
     _inputFocusNode.addListener(() {
-      setState(() {
-        _isInputFocused = _inputFocusNode.hasFocus;
-      });
+      if (mounted) {
+        setState(() {
+          _isInputFocused = _inputFocusNode.hasFocus;
+        });
+      }
     });
     _scrollController.addListener(() {
       final currentPosition = _scrollController.position.pixels;
       final maxPosition = _scrollController.position.maxScrollExtent;
       if (currentPosition < _previousScrollPosition &&
           maxPosition - currentPosition > 200) {
-        setState(() => _showScrollToBottom = true);
+        if (mounted) {
+          setState(() => _showScrollToBottom = true);
+        }
       } else if (maxPosition - currentPosition < 50) {
-        setState(() => _showScrollToBottom = false);
+        if (mounted) {
+          setState(() => _showScrollToBottom = false);
+        }
       }
       _previousScrollPosition = currentPosition;
     });
-    _fabAnimationController?.forward();
+    _fabAnimationController.forward();
     _loadChatHistory();
+    _speech = stt.SpeechToText();
   }
 
   Future<void> _loadChatHistory() async {
     final appData = Provider.of<AppDataProvider>(context, listen: false);
-    await appData.refreshData(); // Ensure we have the latest data
-    setState(() {
-      _messages.addAll(appData.chatHistory.map((msg) {
-        final messageType = msg['message_type'] as String;
-        dynamic content = msg['message'];
-        if (messageType == 'function_result') {
-          content = json.decode(content as String);
-        }
-        return {
-          'content': content,
-          'sender': msg['sender'],
-          'isError': messageType == 'error',
-          'isTyping': false,
-          'isFunctionCall': messageType == 'function_call',
-          'isFunctionResult': messageType == 'function_result',
-          'timestamp': DateTime.fromMillisecondsSinceEpoch(msg['timestamp']),
-        };
-      }));
-      if (_messages.isNotEmpty) {
-        _isChatStarted = true;
-      }
-    });
+    await appData.refreshData(); // Ensure we have the latest data and sessions
+
+    if (mounted) {
+      setState(() {
+        _messages.clear();
+        _messages.addAll(
+          appData.chatHistory.map((msg) {
+            final messageType = msg['message_type'] as String;
+            dynamic content = msg['message'];
+            if (messageType == 'function_result') {
+              content = json.decode(content as String);
+            }
+            return {
+              'content': content,
+              'sender': msg['sender'],
+              'isError': messageType == 'error',
+              'isTyping': false,
+              'isFunctionCall': messageType == 'function_call',
+              'isFunctionResult': messageType == 'function_result',
+              'timestamp': DateTime.fromMillisecondsSinceEpoch(
+                msg['timestamp'],
+              ),
+            };
+          }),
+        );
+        _isChatStarted = _messages.isNotEmpty;
+      });
+    }
     _scrollToBottom();
   }
 
@@ -103,30 +127,37 @@ class _AIAgentScreenState extends State<AIAgentScreen>
     _promptController.dispose();
     _scrollController.dispose();
     _inputFocusNode.dispose();
-    _fabAnimationController?.dispose();
-    _messageAnimationController?.dispose();
+    _fabAnimationController.dispose();
+    _dotAnimationController.dispose();
+    _streamSubscription?.cancel();
     super.dispose();
   }
 
-  void _resetChat() {
+  void _resetChat() async {
     final appData = Provider.of<AppDataProvider>(context, listen: false);
-    appData.deleteAllChatMessages();
-    setState(() {
-      _isLoading = false;
-      _isChatStarted = false;
-      _chatSession = null;
-      _messages.clear();
-    });
+    await appData.createNewChatSession('New Chat'); // Create a new session
+    if (mounted) {
+      setState(() {
+        _isLoading = false;
+        _isChatStarted = false;
+        _chatSession = null; // Reset Firebase chat session
+        _messages.clear(); // Clear UI messages
+      });
+    }
     HapticFeedback.lightImpact();
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: const Text('New chat started'),
-        duration: const Duration(seconds: 2),
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-        backgroundColor: Theme.of(context).colorScheme.primary,
-      ),
-    );
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('New chat started'),
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          backgroundColor: Theme.of(context).colorScheme.primary,
+        ),
+      );
+    }
   }
 
   Future<void> _handleSubmittedMessage({String? prompt}) async {
@@ -142,12 +173,30 @@ class _AIAgentScreenState extends State<AIAgentScreen>
     }
     _promptController.clear();
     _addMessage(userPrompt, 'user');
-    if (!_isChatStarted) {
+
+    final appData = Provider.of<AppDataProvider>(context, listen: false);
+
+    if (_chatSession == null) {
       try {
-        _chatSession = await _aiService.startChat();
-        setState(() {
-          _isChatStarted = true;
-        });
+        final history = appData.chatHistory
+            .map((msg) {
+              final sender = msg['sender'] as String;
+              final messageText = msg['message'] as String;
+              if (sender == 'user') {
+                return fb_ai.Content.text(messageText);
+              } else {
+                return fb_ai.Content.model([fb_ai.TextPart(messageText)]);
+              }
+            })
+            .where((c) => c.role != 'system')
+            .toList();
+
+        _chatSession = await _aiService.startChat(history: history);
+        if (mounted) {
+          setState(() {
+            _isChatStarted = true;
+          });
+        }
       } catch (e) {
         _addErrorMessage(
           "Failed to initialize the chat session. Please ensure your Firebase project is set up correctly.",
@@ -155,12 +204,16 @@ class _AIAgentScreenState extends State<AIAgentScreen>
         return;
       }
     }
-    setState(() {
-      _isLoading = true;
-      _addMessage('', 'ai', isTyping: true);
-    });
+
+    if (mounted) {
+      setState(() {
+        _isLoading = true;
+        _addMessage('', 'ai', isTyping: true);
+      });
+    }
+
     try {
-      final aiResponse = await _aiService.sendMessage(
+      final stream = _aiService.sendMessage(
         chatSession: _chatSession!,
         prompt: userPrompt,
         onFunctionCall: (name, args) {
@@ -176,17 +229,87 @@ class _AIAgentScreenState extends State<AIAgentScreen>
         onGeneratePlan: _handlePlanGeneration,
         onGetWeakTopics: _handleGetWeakTopics,
       );
-      _addMessage(aiResponse, 'ai');
+
+      var responseText = StringBuffer();
+      _streamSubscription = stream.listen(
+        (data) {
+          responseText.write(data);
+          if (mounted) {
+            setState(() {
+              if (_messages.isNotEmpty && _messages.last['sender'] == 'ai') {
+                _messages.last['content'] = responseText.toString();
+                _messages.last['isTyping'] = false;
+              }
+            });
+          }
+          _scrollToBottom();
+        },
+        onDone: () async {
+          final finalResponse = responseText.toString();
+          if (finalResponse.isNotEmpty) {
+            final appData = Provider.of<AppDataProvider>(
+              context,
+              listen: false,
+            );
+            await appData.addChatMessage('ai', 'ai', finalResponse);
+          }
+
+          final currentSessionId = appData.currentChatSessionId;
+          if (currentSessionId != null) {
+            final currentSession = appData.chatSessions.firstWhere(
+              (s) => s.id == currentSessionId,
+              orElse: () => ChatSession(
+                id: 0,
+                title: 'New Chat',
+                createdAt: DateTime.now(),
+              ),
+            );
+            if (currentSession.title == 'New Chat' ||
+                currentSession.title == 'Default Chat') {
+              final List<fb_ai.Content> initialChatContent = [
+                fb_ai.Content.text(
+                  _messages.firstWhere((m) => m['sender'] == 'user')['content']
+                      as String,
+                ),
+                fb_ai.Content.model([fb_ai.TextPart(responseText.toString())]),
+              ];
+              final generatedTitle = await _aiService.generateChatTitle(
+                initialChatContent,
+              );
+              await appData.updateChatSessionTitle(
+                currentSessionId,
+                generatedTitle,
+              );
+            }
+          }
+          if (mounted) {
+            setState(() {
+              _isLoading = false;
+            });
+          }
+        },
+        onError: (e) {
+          debugPrint("[AIAgentScreen] Caught Exception: $e");
+          _addErrorMessage(
+            "An error occurred with the AI service. Please check your Firebase project setup (including billing and enabled APIs) and your network connection. (Details: ${e.toString()})",
+          );
+          if (mounted) {
+            setState(() {
+              _isLoading = false;
+            });
+          }
+        },
+      );
     } on Exception catch (e) {
-      // Catching a more generic Exception as the specific type might vary.
       debugPrint("[AIAgentScreen] Caught Exception: $e");
       _addErrorMessage(
         "An error occurred with the AI service. Please check your Firebase project setup (including billing and enabled APIs) and your network connection. (Details: ${e.toString()})",
       );
-    } finally {
-      setState(() {
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
   }
 
@@ -232,17 +355,226 @@ class _AIAgentScreenState extends State<AIAgentScreen>
     }
   }
 
-  // --- The rest of the UI code remains the same ---
-  // (build methods, message widgets, etc.)
+  Widget _buildDrawer() {
+    final appData = Provider.of<AppDataProvider>(context);
+    final currentSessionId = appData.currentChatSessionId;
 
-  Future<void> _startVoiceInput() async {
-    HapticFeedback.lightImpact();
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Voice input will be implemented soon'),
-        duration: Duration(seconds: 2),
+    return Drawer(
+      child: Column(
+        children: [
+          DrawerHeader(
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            child: SizedBox(
+              width: double.infinity,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Text(
+                    'Chat Sessions',
+                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Manage your conversations',
+                    style: Theme.of(
+                      context,
+                    ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Expanded(
+            child: ListView.builder(
+              itemCount: appData.chatSessions.length,
+              itemBuilder: (context, index) {
+                final session = appData.chatSessions[index];
+                final isSelected = session.id == currentSessionId;
+                return ListTile(
+                  leading: Icon(
+                    Icons.chat_bubble_outline,
+                    color: isSelected
+                        ? Theme.of(context).colorScheme.onPrimaryContainer
+                        : Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                  title: Text(
+                    session.title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontWeight: isSelected
+                          ? FontWeight.bold
+                          : FontWeight.normal,
+                      color: isSelected
+                          ? Theme.of(context).colorScheme.onPrimaryContainer
+                          : Theme.of(context).colorScheme.onSurface,
+                    ),
+                  ),
+                  subtitle: Text(
+                    '${session.createdAt.day}/${session.createdAt.month}/${session.createdAt.year}',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  selected: isSelected,
+                  selectedTileColor: Theme.of(
+                    context,
+                  ).colorScheme.primaryContainer,
+                  onTap: () {
+                    Navigator.pop(context); // Close the drawer
+                    _switchChatSession(session.id!);
+                  },
+                  trailing: IconButton(
+                    icon: const Icon(Icons.delete_outline),
+                    color: Theme.of(context).colorScheme.error,
+                    onPressed: () {
+                      Navigator.pop(context); // Close the drawer
+                      _confirmDeleteChatSession(session);
+                    },
+                  ),
+                );
+              },
+            ),
+          ),
+          const Divider(),
+          ListTile(
+            leading: Icon(
+              Icons.add_circle_outline,
+              color: Theme.of(context).colorScheme.primary,
+            ),
+            title: Text(
+              'New Chat',
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                color: Theme.of(context).colorScheme.primary,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            onTap: () {
+              Navigator.pop(context); // Close the drawer
+              _resetChat(); // This now creates a new session
+            },
+          ),
+          const SizedBox(height: 16),
+        ],
       ),
     );
+  }
+
+  void _switchChatSession(int sessionId) async {
+    final appData = Provider.of<AppDataProvider>(context, listen: false);
+    if (appData.currentChatSessionId != sessionId) {
+      if (mounted) {
+        setState(() {
+          _isLoading = true;
+          _messages.clear(); // Clear current messages while switching
+        });
+      }
+      await appData.switchChatSession(sessionId);
+      _chatSession = null; // Invalidate Firebase chat session to force re-init
+      await _loadChatHistory(); // Load new session's history
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+      HapticFeedback.lightImpact();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Switched to chat session $sessionId'),
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            backgroundColor: Theme.of(context).colorScheme.primary,
+          ),
+        );
+      }
+    }
+  }
+
+  void _confirmDeleteChatSession(ChatSession session) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Delete Chat Session?'),
+          content: Text(
+            'Are you sure you want to delete the chat session "${session.title}"? This action cannot be undone.',
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: const Text('Cancel'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            FilledButton(
+              style: FilledButton.styleFrom(backgroundColor: Colors.red),
+              onPressed: () async {
+                Navigator.of(context).pop();
+                await _deleteChatSession(session.id!);
+              },
+              child: const Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _deleteChatSession(int sessionId) async {
+    final appData = Provider.of<AppDataProvider>(context, listen: false);
+    await appData.deleteChatSession(sessionId);
+    _chatSession = null; // Invalidate Firebase chat session
+    await _loadChatHistory(); // Reload history (will switch to another session if current was deleted)
+    HapticFeedback.heavyImpact();
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Chat session deleted'),
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
+          backgroundColor: Theme.of(context).colorScheme.error,
+        ),
+      );
+    }
+  }
+
+  Future<void> _startVoiceInput() async {
+    if (!_isListening) {
+      bool available = await _speech.initialize(
+        onStatus: (val) => print('onStatus: $val'),
+        onError: (val) => print('onError: $val'),
+      );
+      if (available) {
+        setState(() => _isListening = true);
+        _speech.listen(
+          localeId: 'fa_IR', // Add this line for Persian support
+          onResult: (val) => setState(() {
+            _text = val.recognizedWords;
+            if (val.hasConfidenceRating && val.confidence > 0) {}
+          }),
+        );
+      }
+    } else {
+      setState(() => _isListening = false);
+      _speech.stop();
+      if (_text.isNotEmpty) {
+        _handleSubmittedMessage(prompt: _text);
+        _text = '';
+      }
+    }
   }
 
   void _addMessage(
@@ -278,18 +610,20 @@ class _AIAgentScreenState extends State<AIAgentScreen>
       appData.addChatMessage(sender, messageType, messageContent);
     }
 
-    setState(() {
-      _messages.removeWhere((msg) => msg['isTyping'] == true);
-      _messages.add({
-        'content': content,
-        'sender': sender,
-        'isError': isError,
-        'isTyping': isTyping,
-        'isFunctionCall': isFunctionCall,
-        'isFunctionResult': isFunctionResult,
-        'timestamp': DateTime.now(),
+    if (mounted) {
+      setState(() {
+        _messages.removeWhere((msg) => msg['isTyping'] == true);
+        _messages.add({
+          'content': content,
+          'sender': sender,
+          'isError': isError,
+          'isTyping': isTyping,
+          'isFunctionCall': isFunctionCall,
+          'isFunctionResult': isFunctionResult,
+          'timestamp': DateTime.now(),
+        });
       });
-    });
+    }
     _scrollToBottom();
   }
 
@@ -306,7 +640,9 @@ class _AIAgentScreenState extends State<AIAgentScreen>
           duration: const Duration(milliseconds: 300),
           curve: Curves.easeOut,
         );
-        setState(() => _showScrollToBottom = false);
+        if (mounted) {
+          setState(() => _showScrollToBottom = false);
+        }
       }
     });
   }
@@ -445,19 +781,47 @@ class _AIAgentScreenState extends State<AIAgentScreen>
     return Scaffold(
       backgroundColor: isDarkMode ? Colors.grey[900] : Colors.grey[50],
       appBar: AppBar(
-        title: const Text('AI Study Assistant'),
+        title: Consumer<AppDataProvider>(
+          builder: (context, appData, child) {
+            String appBarTitle = 'AI Study Assistant';
+            final currentSessionId = appData.currentChatSessionId;
+            if (currentSessionId != null) {
+              final session = appData.chatSessions.firstWhere(
+                (s) => s.id == currentSessionId,
+                orElse: () => ChatSession(
+                  id: 0,
+                  title: 'New Chat',
+                  createdAt: DateTime.now(),
+                ),
+              );
+              appBarTitle = session.title;
+            }
+            return Text(appBarTitle);
+          },
+        ),
         backgroundColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
         foregroundColor: colorScheme.primary,
+        leading: Builder(
+          builder: (context) => IconButton(
+            icon: const Icon(Icons.menu_rounded),
+            onPressed: () => Scaffold.of(context).openDrawer(),
+            tooltip: 'Chat History',
+            style: IconButton.styleFrom(
+              backgroundColor: colorScheme.primary.withOpacity(0.1),
+              foregroundColor: colorScheme.primary,
+            ),
+          ),
+        ),
         actions: [
           AnimatedBuilder(
-            animation: _fabAnimation ?? kAlwaysCompleteAnimation,
+            animation: _fabAnimation,
             builder: (context, child) {
               return Transform.scale(
-                scale: _fabAnimation?.value ?? 1.0,
+                scale: _fabAnimation.value,
                 child: IconButton(
-                  icon: const Icon(Icons.refresh_outlined),
+                  icon: const Icon(Icons.add),
                   onPressed: _isLoading ? null : _resetChat,
                   tooltip: 'New Chat',
                   style: IconButton.styleFrom(
@@ -471,6 +835,7 @@ class _AIAgentScreenState extends State<AIAgentScreen>
           const SizedBox(width: 8),
         ],
       ),
+      drawer: _buildDrawer(), // Add the drawer here
       body: Stack(
         children: [
           Column(
@@ -494,6 +859,18 @@ class _AIAgentScreenState extends State<AIAgentScreen>
               _buildInputArea(),
             ],
           ),
+          if (_isListening)
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Text(
+                _text,
+                style: TextStyle(
+                  fontSize: 24,
+                  color: Colors.black,
+                  fontWeight: FontWeight.w300,
+                ),
+              ),
+            ),
           if (_showScrollToBottom)
             Positioned(
               right: 20,
@@ -517,10 +894,10 @@ class _AIAgentScreenState extends State<AIAgentScreen>
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             AnimatedBuilder(
-              animation: _fabAnimation ?? kAlwaysCompleteAnimation,
+              animation: _fabAnimation,
               builder: (context, child) {
                 return Transform.scale(
-                  scale: _fabAnimation?.value ?? 1.0,
+                  scale: _fabAnimation.value,
                   child: Container(
                     width: 120,
                     height: 120,
@@ -777,18 +1154,55 @@ class _AIAgentScreenState extends State<AIAgentScreen>
                         const SizedBox(width: 8),
                       ],
                       Flexible(
-                        child: Text(
-                          text ?? '',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: isError
-                                ? Colors.red[700]
-                                : isUser
-                                ? Colors.white
-                                : Theme.of(context).textTheme.bodyLarge?.color,
-                            height: 1.4,
-                          ),
-                        ),
+                        child: isUser || isError
+                            ? Text(
+                                text ?? '',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: isError
+                                      ? Colors.red[700]
+                                      : isUser
+                                      ? Colors.white
+                                      : Theme.of(
+                                          context,
+                                        ).textTheme.bodyLarge?.color,
+                                  height: 1.4,
+                                ),
+                              )
+                            : MarkdownBody(
+                                data: text ?? '',
+                                selectable: true,
+                                styleSheet:
+                                    MarkdownStyleSheet.fromTheme(
+                                      Theme.of(context),
+                                    ).copyWith(
+                                      p: Theme.of(context).textTheme.bodyLarge
+                                          ?.copyWith(
+                                            color: isUser
+                                                ? Colors.white
+                                                : Theme.of(
+                                                    context,
+                                                  ).textTheme.bodyLarge?.color,
+                                            height: 1.4,
+                                            fontSize: 16,
+                                          ),
+                                      code: Theme.of(context)
+                                          .textTheme
+                                          .bodyMedium!
+                                          .copyWith(
+                                            backgroundColor: Theme.of(
+                                              context,
+                                            ).dividerColor.withOpacity(0.1),
+                                            fontFamily: 'monospace',
+                                          ),
+                                      codeblockDecoration: BoxDecoration(
+                                        color: Theme.of(
+                                          context,
+                                        ).dividerColor.withOpacity(0.1),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                              ),
                       ),
                     ],
                   ),
@@ -836,17 +1250,13 @@ class _AIAgentScreenState extends State<AIAgentScreen>
           children: [
             Row(
               children: [
-                Icon(
-                  Icons.check_circle_outline,
-                  color: Colors.green,
-                  size: 20,
-                ),
+                Icon(Icons.check_circle_outline, color: Colors.green, size: 20),
                 const SizedBox(width: 8),
                 Text(
                   'Function Result',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ],
             ),
@@ -867,10 +1277,9 @@ class _AIAgentScreenState extends State<AIAgentScreen>
             if (weakTopics != null) ...[
               Text(
                 'Weakest Topics:',
-                style: Theme.of(context)
-                    .textTheme
-                    .bodyMedium
-                    ?.copyWith(fontWeight: FontWeight.bold),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 4),
               for (final topic in weakTopics)
@@ -884,7 +1293,7 @@ class _AIAgentScreenState extends State<AIAgentScreen>
       ),
     );
   }
-  
+
   Widget _buildFunctionCallMessage(String? text) {
     return Align(
       alignment: Alignment.center,
@@ -920,26 +1329,27 @@ class _AIAgentScreenState extends State<AIAgentScreen>
   }
 
   Widget _buildTypingIndicator() {
-    return SizedBox(
-      width: 40,
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [_buildDot(0), _buildDot(1), _buildDot(2)],
-      ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16.0),
+      child: Row(children: [_buildDot(0), _buildDot(1), _buildDot(2)]),
     );
   }
 
   Widget _buildDot(int index) {
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 500),
-      curve: Curves.easeInOut,
-      width: 8,
-      height: 8,
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primary,
-        shape: BoxShape.circle,
+    return FadeTransition(
+      opacity: CurvedAnimation(
+        parent: _dotAnimationController,
+        curve: Interval(index * 0.2, 1.0, curve: Curves.easeInOut),
       ),
-      margin: const EdgeInsets.symmetric(horizontal: 2),
+      child: Container(
+        width: 8,
+        height: 8,
+        margin: const EdgeInsets.symmetric(horizontal: 2),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.primary,
+          shape: BoxShape.circle,
+        ),
+      ),
     );
   }
 
@@ -1042,8 +1452,10 @@ class _AIAgentScreenState extends State<AIAgentScreen>
                             : IconButton(
                                 key: const ValueKey('voice_button'),
                                 icon: Icon(
-                                  Icons.mic_outlined,
-                                  color: Theme.of(context).colorScheme.primary,
+                                  _isListening ? Icons.mic : Icons.mic_outlined,
+                                  color: _isListening
+                                      ? Colors.red
+                                      : Theme.of(context).colorScheme.primary,
                                 ),
                                 onPressed: _startVoiceInput,
                                 padding: EdgeInsets.zero,
