@@ -4,9 +4,9 @@
 
 The Iranian National University Entrance Exam (Konkur) is a highly competitive and challenging milestone for students in Iran. Preparing for it requires meticulous planning, consistent effort, and adaptive strategies. This responsive Flutter application, the **Konkur AI Study Planner (برنامه ریز هوشمند کنکور)**, aims to simplify and optimize this preparation journey.
 
-This app is specifically designed for students tackling the Konkur, with an initial focus on the **Math & Physics track**. It leverages the power of the Gemini AI to create dynamic, personalized, and optimized study plans. These plans are based on the official subject weighting (`بودجه بندی`), the user's self-assessed strengths in various topics, and the crucial factor of time remaining until the exam.
+This app is specifically designed for students tackling the Konkur, with an initial focus on the **Math & Physics track**. It leverages the power of the Gemini AI to create dynamic, personalized, and optimized study plans. These plans are based on the official subject weighting (`بودجه بندی`), the user's self-assessed strengths in various topics, and the crucial factor of time remaining until the exam. The application also provides full Persian (Farsi) localization, including a Jalali date picker, to ensure a natural and intuitive user experience for Iranian students.
 
-A key feature is its **local-first approach**: all user data, including study progress and personal notes, is stored securely on the device using an SQLite database. This ensures user privacy, allows for full offline access to study plans and materials, and makes the app reliable even without a constant internet connection. To further aid students, the app incorporates features like push notifications for task reminders and an interactive timer to help manage study sessions effectively.
+A key feature is its **local-first approach**: all user data, including study progress and personal notes, is stored securely on the device using an SQLite database. This ensures user privacy, allows for full offline access to study plans and materials, and makes the app reliable even without a constant internet connection. To further aid students, the app incorporates features like push notifications for task reminders, an interactive timer to help manage study sessions effectively, and a native splash screen for a smooth startup experience.
 
 ***
 
@@ -136,6 +136,9 @@ This project relies on several key Flutter packages to function:
 -   **`http`**: A standard package for making HTTP requests. It is used to communicate with the external Gemini API to send prompts and receive the generated study plans.
 -   **`intl`**: Provides internationalization and localization facilities, including powerful date and number formatting. It's used here to display dates in a user-friendly format.
 -   **`timezone`**: A necessary dependency for `flutter_local_notifications` to handle scheduling notifications correctly across different time zones.
+-   **`flutter_localizations`**: Essential for internationalizing Flutter apps, providing core localization functionalities and enabling support for multiple languages, including Persian.
+-   **`persian_datetime_picker`**: Integrates a Persian (Jalali) date and time picker, crucial for providing a culturally relevant date selection experience for Iranian users.
+-   **`flutter_native_splash`**: Used to generate a customizable native splash screen for Android, iOS, and Web, improving the initial loading experience of the application.
 
 ***
 

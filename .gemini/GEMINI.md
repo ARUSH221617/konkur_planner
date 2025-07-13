@@ -1,6 +1,6 @@
 This project is a Konkur AI Study Planner, a responsive Flutter application designed to help Iranian students prepare for the national university entrance exam, with a focus on the Math & Physics track. It uses the Gemini AI to generate personalized and adaptive study plans based on the official subject weighting, user-assessed strengths, and time remaining until the exam.
 
-A key aspect of the application is its local-first approach, storing all user data, including study progress and notes, on the device in an SQLite database. This ensures user privacy and allows for full offline access to the application. The app also includes features like push notifications for task reminders and an interactive timer to help students manage their study sessions effectively.
+A key aspect of the application is its local-first approach, storing all user data, including study progress and notes, on the device in an SQLite database. This ensures user privacy and allows for full offline access to the application. The app also includes features like push notifications for task reminders, an interactive timer to help students manage their study sessions effectively, full Persian (Farsi) localization with a Jalali date picker, and a native splash screen for a smooth startup experience.
 
 ### Core Features:
 
