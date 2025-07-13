@@ -3,6 +3,8 @@ import 'dart:io' show Platform;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:persian_datetime_picker/persian_datetime_picker.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:konkur_planner/database/database_helper.dart';
 import 'package:konkur_planner/providers/app_data_provider.dart';
@@ -40,6 +42,15 @@ class MyApp extends StatelessWidget {
       child: MaterialApp.router(
         title: 'Konkur AI Study Planner',
         debugShowCheckedModeBanner: false,
+        locale: const Locale("fa", "IR"),
+        supportedLocales: const [Locale("fa", "IR"), Locale("en", "US")],
+        localizationsDelegates: const [
+          PersianMaterialLocalizations.delegate,
+          PersianCupertinoLocalizations.delegate,
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate,
+        ],
         theme: ThemeData(
           primarySwatch: Colors.blueGrey,
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.blueGrey),
@@ -49,23 +60,6 @@ class MyApp extends StatelessWidget {
             foregroundColor: Colors.white,
           ),
           fontFamily: 'IRANSans',
-          textTheme: const TextTheme(
-            titleLarge: TextStyle(fontFamily: 'IRANSans'),
-            titleMedium: TextStyle(fontFamily: 'IRANSans'),
-            titleSmall: TextStyle(fontFamily: 'IRANSans'),
-            bodyLarge: TextStyle(fontFamily: 'IRANSans'),
-            bodyMedium: TextStyle(fontFamily: 'IRANSans'),
-            bodySmall: TextStyle(fontFamily: 'IRANSans'),
-            displayLarge: TextStyle(fontFamily: 'IRANSans'),
-            displayMedium: TextStyle(fontFamily: 'IRANSans'),
-            displaySmall: TextStyle(fontFamily: 'IRANSans'),
-            headlineLarge: TextStyle(fontFamily: 'IRANSans'),
-            headlineMedium: TextStyle(fontFamily: 'IRANSans'),
-            headlineSmall: TextStyle(fontFamily: 'IRANSans'),
-            labelLarge: TextStyle(fontFamily: 'IRANSans'),
-            labelMedium: TextStyle(fontFamily: 'IRANSans'),
-            labelSmall: TextStyle(fontFamily: 'IRANSans'),
-          ),
         ),
         routerConfig: router,
       ),

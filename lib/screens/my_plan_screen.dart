@@ -1,9 +1,10 @@
-
 import 'package:flutter/material.dart';
+import 'package:konkur_planner/screens/timer_screen.dart';
 import 'package:provider/provider.dart';
-import 'package:intl/intl.dart';
-import '../providers/app_data_provider.dart';
+import 'package:shamsi_date/shamsi_date.dart';
+
 import '../models/study_task.dart';
+import '../providers/app_data_provider.dart';
 import '../services/notification_service.dart';
 
 class MyPlanScreen extends StatefulWidget {
@@ -15,6 +16,7 @@ class MyPlanScreen extends StatefulWidget {
 
 class _MyPlanScreenState extends State<MyPlanScreen> {
   final NotificationService _notificationService = NotificationService();
+  bool _showAllTasks = false;
 
   @override
   void initState() {
@@ -22,43 +24,57 @@ class _MyPlanScreenState extends State<MyPlanScreen> {
     _notificationService.init();
   }
 
-  void _startTimer(StudyTask task) {
-    // TODO: Implement actual timer logic and UI
-    // For now, just mark as in_progress and show a dialog
-    Provider.of<AppDataProvider>(context, listen: false).updateTaskStatus(task.id!, 'in_progress');
-    _showTimerDialog(task);
+  void _startTimer(StudyTask task) async {
+    // Mark task as in_progress
+    Provider.of<AppDataProvider>(
+      context,
+      listen: false,
+    ).updateTaskStatus(task.id!, 'in_progress');
+
+    // Navigate to TimerScreen and wait for it to pop
+    final result = await Navigator.of(
+      context,
+    ).push(MaterialPageRoute(builder: (context) => TimerScreen(task: task)));
+
+    if (result == 'paused') {
+      Provider.of<AppDataProvider>(
+        context,
+        listen: false,
+      ).updateTaskStatus(task.id!, 'paused');
+    } else {
+      // After returning from TimerScreen, show feedback dialog
+      _showFeedbackDialog(task);
+    }
   }
 
-  void _showTimerDialog(StudyTask task) {
+  void _showFeedbackDialog(StudyTask task) {
     TextEditingController feedbackController = TextEditingController();
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Task: ${task.taskType} ${task.topicId}'), // Will show topic name later
-          content: SingleChildScrollView(
-            child: ListBody(
-              children: <Widget>[
-                Text('Time for your study session!'),
-                SizedBox(height: 20),
-                TextField(
-                  controller: feedbackController,
-                  decoration: InputDecoration(
-                    labelText: 'Your feedback (e.g., what you learned, difficulties)',
-                    border: OutlineInputBorder(),
-                  ),
-                  maxLines: 3,
-                ),
-              ],
+          title: Text('Feedback for ${task.taskType}'),
+          content: TextField(
+            controller: feedbackController,
+            decoration: const InputDecoration(
+              labelText: 'Your feedback (e.g., what you learned, difficulties)',
+              border: OutlineInputBorder(),
             ),
+            maxLines: 3,
           ),
           actions: <Widget>[
             TextButton(
-              child: const Text('Mark as Completed'),
+              child: const Text('Submit'),
               onPressed: () async {
-                await Provider.of<AppDataProvider>(context, listen: false).updateTaskFeedback(task.id!, feedbackController.text);
-                await Provider.of<AppDataProvider>(context, listen: false).updateTaskStatus(task.id!, 'completed');
+                await Provider.of<AppDataProvider>(
+                  context,
+                  listen: false,
+                ).updateTaskFeedback(task.id!, feedbackController.text);
+                await Provider.of<AppDataProvider>(
+                  context,
+                  listen: false,
+                ).updateTaskStatus(task.id!, 'completed');
                 Navigator.of(context).pop();
               },
             ),
@@ -75,16 +91,48 @@ class _MyPlanScreenState extends State<MyPlanScreen> {
         title: const Text('برنامه من'),
         backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            icon: Icon(
+              _showAllTasks ? Icons.calendar_today : Icons.calendar_view_month,
+            ),
+            tooltip: _showAllTasks ? "Show Today's Tasks" : "Show All Tasks",
+            onPressed: () {
+              setState(() {
+                _showAllTasks = !_showAllTasks;
+              });
+            },
+          ),
+        ],
       ),
       body: Consumer<AppDataProvider>(
         builder: (context, appData, child) {
-          if (appData.studyTasks.isEmpty) {
-            return const Center(child: Text('No study plan generated yet. Go to AI Agent to create one!'));
+          final List<StudyTask> tasksToShow;
+          if (_showAllTasks) {
+            tasksToShow = appData.studyTasks;
+          } else {
+            final now = DateTime.now();
+            tasksToShow = appData.studyTasks.where((task) {
+              final taskDate = DateTime.parse(task.taskDate);
+              return taskDate.year == now.year &&
+                  taskDate.month == now.month &&
+                  taskDate.day == now.day;
+            }).toList();
+          }
+
+          if (tasksToShow.isEmpty) {
+            return Center(
+              child: Text(
+                _showAllTasks
+                    ? 'No study plan generated yet. Go to AI Agent to create one!'
+                    : 'No tasks for today. You can view all tasks or create a new plan.',
+              ),
+            );
           }
 
           // Group tasks by date
           final Map<String, List<Map<String, dynamic>>> groupedTasks = {};
-          for (var taskData in appData.studyTasks) {
+          for (var taskData in tasksToShow) {
             final date = taskData.taskDate;
             if (!groupedTasks.containsKey(date)) {
               groupedTasks[date] = [];
@@ -99,8 +147,12 @@ class _MyPlanScreenState extends State<MyPlanScreen> {
               'status': taskData.status,
               'user_feedback': taskData.userFeedback,
               // Add topic details from appData.topics
-              'topic_name': appData.topics.firstWhere((t) => t.id == taskData.topicId).name,
-              'topic_subject': appData.topics.firstWhere((t) => t.id == taskData.topicId).subject,
+              'topic_name': appData.topics
+                  .firstWhere((t) => t.id == taskData.topicId)
+                  .name,
+              'topic_subject': appData.topics
+                  .firstWhere((t) => t.id == taskData.topicId)
+                  .subject,
             });
           }
 
@@ -112,6 +164,12 @@ class _MyPlanScreenState extends State<MyPlanScreen> {
             itemBuilder: (context, index) {
               final date = sortedDates[index];
               final tasksForDate = groupedTasks[date]!;
+              formattedJalaliDate(date) {
+                final jalali = Jalali.fromDateTime(
+                  DateTime.parse(date),
+                ).formatter;
+                return '${jalali.yyyy}/${jalali.mm}/${jalali.dd}';
+              }
 
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -119,11 +177,12 @@ class _MyPlanScreenState extends State<MyPlanScreen> {
                   Padding(
                     padding: const EdgeInsets.symmetric(vertical: 10.0),
                     child: Text(
-                      DateFormat('yyyy-MM-dd').format(DateTime.parse(date)),
-                      style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
+                      formattedJalaliDate(date),
+                      style: Theme.of(context).textTheme.headlineSmall
+                          ?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
                     ),
                   ),
                   ...tasksForDate.map((taskData) {
@@ -136,14 +195,27 @@ class _MyPlanScreenState extends State<MyPlanScreen> {
                       elevation: 1,
                       child: ListTile(
                         title: Text('$topicName - $topicSubject'),
-                        subtitle: Text('${task.startTime} - ${task.endTime} (${task.taskType})'),
+                        subtitle: Text(
+                          '${task.startTime} - ${task.endTime} (${task.taskType})',
+                        ),
                         trailing: task.status == 'pending'
                             ? IconButton(
                                 icon: const Icon(Icons.play_arrow),
+                                tooltip: 'Start Task',
+                                onPressed: () => _startTimer(task),
+                              )
+                            : task.status == 'paused'
+                            ? IconButton(
+                                icon: const Icon(Icons.play_arrow),
+                                tooltip: 'Resume Task',
                                 onPressed: () => _startTimer(task),
                               )
                             : Text(task.status),
-                        tileColor: task.status == 'completed' ? Colors.green[50] : null,
+                        tileColor: task.status == 'completed'
+                            ? Colors.green[50]
+                            : task.status == 'paused'
+                            ? Colors.orange[50]
+                            : null,
                       ),
                     );
                   }),

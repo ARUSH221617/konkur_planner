@@ -1,3 +1,4 @@
+import 'package:konkur_planner/screens/settings_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:konkur_planner/screens/ai_agent_screen.dart';
@@ -39,6 +40,11 @@ final GoRouter router = GoRouter(
           name: 'myPlan',
           builder: (context, state) => const MyPlanScreen(),
         ),
+        GoRoute(
+          path: '/settings',
+          name: 'settings',
+          builder: (context, state) => const SettingsScreen(),
+        ),
       ],
     ),
   ],
@@ -71,6 +77,10 @@ class MainShell extends StatelessWidget {
             icon: Icon(Icons.calendar_today),
             label: 'برنامه من',
           ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings),
+            label: 'تنظیمات',
+          ),
         ],
         currentIndex: _calculateSelectedIndex(context),
         selectedItemColor: Theme.of(context).colorScheme.primary,
@@ -95,6 +105,9 @@ class MainShell extends StatelessWidget {
     if (location == '/my-plan') {
       return 3;
     }
+    if (location == '/settings') {
+      return 4;
+    }
     return 0;
   }
 
@@ -111,6 +124,9 @@ class MainShell extends StatelessWidget {
         break;
       case 3:
         GoRouter.of(context).go('/my-plan');
+        break;
+      case 4:
+        GoRouter.of(context).go('/settings');
         break;
     }
   }

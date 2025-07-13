@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
@@ -67,6 +68,34 @@ class _AIAgentScreenState extends State<AIAgentScreen>
       _previousScrollPosition = currentPosition;
     });
     _fabAnimationController?.forward();
+    _loadChatHistory();
+  }
+
+  Future<void> _loadChatHistory() async {
+    final appData = Provider.of<AppDataProvider>(context, listen: false);
+    await appData.refreshData(); // Ensure we have the latest data
+    setState(() {
+      _messages.addAll(appData.chatHistory.map((msg) {
+        final messageType = msg['message_type'] as String;
+        dynamic content = msg['message'];
+        if (messageType == 'function_result') {
+          content = json.decode(content as String);
+        }
+        return {
+          'content': content,
+          'sender': msg['sender'],
+          'isError': messageType == 'error',
+          'isTyping': false,
+          'isFunctionCall': messageType == 'function_call',
+          'isFunctionResult': messageType == 'function_result',
+          'timestamp': DateTime.fromMillisecondsSinceEpoch(msg['timestamp']),
+        };
+      }));
+      if (_messages.isNotEmpty) {
+        _isChatStarted = true;
+      }
+    });
+    _scrollToBottom();
   }
 
   @override
@@ -80,6 +109,8 @@ class _AIAgentScreenState extends State<AIAgentScreen>
   }
 
   void _resetChat() {
+    final appData = Provider.of<AppDataProvider>(context, listen: false);
+    appData.deleteAllChatMessages();
     setState(() {
       _isLoading = false;
       _isChatStarted = false;
@@ -132,6 +163,16 @@ class _AIAgentScreenState extends State<AIAgentScreen>
       final aiResponse = await _aiService.sendMessage(
         chatSession: _chatSession!,
         prompt: userPrompt,
+        onFunctionCall: (name, args) {
+          _addMessage(
+            'Calling function: $name with arguments: $args',
+            'system',
+            isFunctionCall: true,
+          );
+        },
+        onFunctionResult: (result) {
+          _addMessage(result, 'system', isFunctionResult: true);
+        },
         onGeneratePlan: _handlePlanGeneration,
         onGetWeakTopics: _handleGetWeakTopics,
       );
@@ -205,18 +246,47 @@ class _AIAgentScreenState extends State<AIAgentScreen>
   }
 
   void _addMessage(
-    String text,
+    dynamic content,
     String sender, {
     bool isTyping = false,
     bool isError = false,
+    bool isFunctionCall = false,
+    bool isFunctionResult = false,
   }) {
+    final appData = Provider.of<AppDataProvider>(context, listen: false);
+    String messageType;
+    String messageContent;
+
+    if (isTyping) {
+      messageType = 'typing';
+      messageContent = '';
+    } else if (isError) {
+      messageType = 'error';
+      messageContent = content as String;
+    } else if (isFunctionCall) {
+      messageType = 'function_call';
+      messageContent = content as String;
+    } else if (isFunctionResult) {
+      messageType = 'function_result';
+      messageContent = json.encode(content);
+    } else {
+      messageType = sender;
+      messageContent = content as String;
+    }
+
+    if (!isTyping) {
+      appData.addChatMessage(sender, messageType, messageContent);
+    }
+
     setState(() {
       _messages.removeWhere((msg) => msg['isTyping'] == true);
       _messages.add({
-        'text': text,
+        'content': content,
         'sender': sender,
         'isError': isError,
         'isTyping': isTyping,
+        'isFunctionCall': isFunctionCall,
+        'isFunctionResult': isFunctionResult,
         'timestamp': DateTime.now(),
       });
     });
@@ -623,52 +693,24 @@ class _AIAgentScreenState extends State<AIAgentScreen>
     final isUser = message['sender'] == 'user';
     final isTyping = message['isTyping'] == true;
     final isError = message['isError'] == true;
-    final text = message['text'] as String?;
+    final isFunctionCall = message['isFunctionCall'] == true;
+    final isFunctionResult = message['isFunctionResult'] == true;
+    final content = message['content'];
+
     if (isTyping) {
-      return Align(
-        alignment: Alignment.centerLeft,
-        child: Container(
-          margin: const EdgeInsets.only(bottom: 16),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.end,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).cardColor,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 6,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                constraints: BoxConstraints(
-                  maxWidth: MediaQuery.of(context).size.width * 0.7,
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    _buildTypingIndicator(),
-                    const SizedBox(width: 12),
-                    Text(
-                      'Thinking...',
-                      style: TextStyle(
-                        color: Theme.of(context).hintColor,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      );
+      return _buildTypingIndicator();
     }
+
+    if (isFunctionCall) {
+      return _buildFunctionCallMessage(content as String?);
+    }
+
+    if (isFunctionResult) {
+      return _buildFunctionResultMessage(content as Map<String, Object?>);
+    }
+
+    final text = content as String?;
+
     return GestureDetector(
       onLongPress: () {
         if (text != null && text.isNotEmpty && !isError) {
@@ -769,6 +811,109 @@ class _AIAgentScreenState extends State<AIAgentScreen>
                 ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFunctionResultMessage(Map<String, Object?> result) {
+    final status = result['status'] as String?;
+    final weakTopics = result['weak_topics'] as List?;
+
+    return Align(
+      alignment: Alignment.center,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.all(16),
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Theme.of(context).dividerColor),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  Icons.check_circle_outline,
+                  color: Colors.green,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Function Result',
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                ),
+              ],
+            ),
+            const Divider(height: 20),
+            if (status != null)
+              RichText(
+                text: TextSpan(
+                  style: Theme.of(context).textTheme.bodyMedium,
+                  children: [
+                    const TextSpan(
+                      text: 'Status: ',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    TextSpan(text: status),
+                  ],
+                ),
+              ),
+            if (weakTopics != null) ...[
+              Text(
+                'Weakest Topics:',
+                style: Theme.of(context)
+                    .textTheme
+                    .bodyMedium
+                    ?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 4),
+              for (final topic in weakTopics)
+                Padding(
+                  padding: const EdgeInsets.only(left: 16.0, top: 4.0),
+                  child: Text('• $topic'),
+                ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+  
+  Widget _buildFunctionCallMessage(String? text) {
+    return Align(
+      alignment: Alignment.center,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.secondary.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.settings_ethernet,
+              color: Theme.of(context).colorScheme.secondary,
+              size: 16,
+            ),
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                text ?? '',
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.secondary,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

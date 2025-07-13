@@ -12,6 +12,8 @@ class AppDataProvider with ChangeNotifier {
   List<Topic> get topics => _topics;
   List<UserSelection> get userSelections => _userSelections;
   List<StudyTask> get studyTasks => _studyTasks;
+  List<Map<String, dynamic>> _chatHistory = [];
+  List<Map<String, dynamic>> get chatHistory => _chatHistory;
 
   final DatabaseHelper _dbHelper = DatabaseHelper();
 
@@ -24,6 +26,7 @@ class AppDataProvider with ChangeNotifier {
     _topics = await _dbHelper.getTopics();
     _userSelections = await _dbHelper.getUserSelections();
     _studyTasks = await _dbHelper.getStudyTasks();
+    _chatHistory = await _dbHelper.getChatHistory();
     notifyListeners();
   }
 
@@ -31,7 +34,18 @@ class AppDataProvider with ChangeNotifier {
     _topics = await _dbHelper.getTopics();
     _userSelections = await _dbHelper.getUserSelections();
     _studyTasks = await _dbHelper.getStudyTasks();
+    _chatHistory = await _dbHelper.getChatHistory();
     notifyListeners();
+  }
+
+  Future<void> addChatMessage(String sender, String messageType, String message) async {
+    await _dbHelper.insertChatMessage(sender, messageType, message);
+    await refreshData();
+  }
+
+  Future<void> deleteAllChatMessages() async {
+    await _dbHelper.deleteAllChatMessages();
+    await refreshData();
   }
 
   Future<void> updateUserSelection(UserSelection selection) async {
@@ -53,6 +67,42 @@ class AppDataProvider with ChangeNotifier {
 
   Future<void> updateTaskFeedback(int taskId, String feedback) async {
     await _dbHelper.updateStudyTaskFeedback(taskId, feedback);
+    await refreshData();
+  }
+
+  Future<void> setUserName(String name) async {
+    await _dbHelper.setUserSetting('userName', name);
+    notifyListeners();
+  }
+
+  Future<String> getUserName() async {
+    return await _dbHelper.getUserSetting('userName') ?? 'Konkur Planner User';
+  }
+
+  Future<void> setUserEmail(String email) async {
+    await _dbHelper.setUserSetting('userEmail', email);
+    notifyListeners();
+  }
+
+  Future<String?> getUserEmail() async {
+    return await _dbHelper.getUserSetting('userEmail');
+  }
+
+  Future<void> setUserBirthdate(DateTime birthdate) async {
+    await _dbHelper.setUserSetting('userBirthdate', birthdate.toIso8601String());
+    notifyListeners();
+  }
+
+  Future<DateTime?> getUserBirthdate() async {
+    final birthdateString = await _dbHelper.getUserSetting('userBirthdate');
+    if (birthdateString != null) {
+      return DateTime.tryParse(birthdateString);
+    }
+    return null;
+  }
+
+  Future<void> deleteAllTasks() async {
+    await _dbHelper.deleteAllTasks();
     await refreshData();
   }
 

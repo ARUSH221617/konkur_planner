@@ -68,6 +68,8 @@ class AIService {
   Future<String> sendMessage({
     required ChatSession chatSession,
     required String prompt,
+    required void Function(String name, Map<String, dynamic> args) onFunctionCall,
+    required void Function(Map<String, Object?> result) onFunctionResult,
     required Future<Map<String, Object?>> Function({
       required int studyDays,
       int? studyHoursPerDay,
@@ -78,7 +80,6 @@ class AIService {
   }) async {
     debugPrint("[AIService] Sending message to AI: '$prompt'");
     try {
-      // The sendMessage API is very similar.
       final response = await chatSession.sendMessage(Content.text(prompt));
       final call = response.functionCalls.firstOrNull;
 
@@ -86,6 +87,8 @@ class AIService {
         debugPrint(
           "[AIService] AI requested to call function: '${call.name}' with args: ${call.args}",
         );
+        onFunctionCall(call.name, call.args);
+
         final functionResult = await _handleFunctionCall(
           call,
           onGeneratePlan: onGeneratePlan,
@@ -93,6 +96,7 @@ class AIService {
         );
 
         debugPrint("[AIService] Function call result: $functionResult");
+        onFunctionResult(functionResult);
 
         final responseAfterFunction = await chatSession.sendMessage(
           Content.functionResponse(call.name, functionResult),
@@ -207,9 +211,11 @@ class AIService {
     buffer.writeln('## Constraints:');
     buffer.writeln('- Plan Duration: $studyDays days.');
     buffer.writeln('- Daily Study: $studyHoursPerDay hours.');
+    buffer.writeln('- Start Date: ${DateTime.now().toIso8601String().split('T').first} (today\'s date).');
     if (focusTopics.isNotEmpty) {
       buffer.writeln('- Prioritize these topics: ${focusTopics.join(', ')}.');
     }
+    buffer.writeln('- Available Topics (choose only from this list for "topic_name"): ${allTopics.map((e) => e.name).join(', ')}.');
     buffer.writeln('## User Profile:');
     for (final topic in allTopics) {
       final selection = userSelections.firstWhere(
