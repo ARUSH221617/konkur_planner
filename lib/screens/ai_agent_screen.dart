@@ -148,7 +148,7 @@ class _AIAgentScreenState extends State<AIAgentScreen>
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('New chat started'),
+          content: const Text('چت جدید شروع شد'),
           duration: const Duration(seconds: 2),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
@@ -167,7 +167,7 @@ class _AIAgentScreenState extends State<AIAgentScreen>
     final connectivityResult = await Connectivity().checkConnectivity();
     if (connectivityResult.contains(ConnectivityResult.none)) {
       _addErrorMessage(
-        "No internet connection. Please check your network and try again.",
+                "اتصال اینترنت وجود ندارد. لطفاً شبکه خود را بررسی کرده و دوباره تلاش کنید.",
       );
       return;
     }
@@ -199,7 +199,7 @@ class _AIAgentScreenState extends State<AIAgentScreen>
         }
       } catch (e) {
         _addErrorMessage(
-          "Failed to initialize the chat session. Please ensure your Firebase project is set up correctly.",
+                    "راه‌اندازی جلسه چت ناموفق بود. لطفاً از صحت تنظیمات پروژه Firebase خود اطمینان حاصل کنید.",
         );
         return;
       }
@@ -218,7 +218,7 @@ class _AIAgentScreenState extends State<AIAgentScreen>
         prompt: userPrompt,
         onFunctionCall: (name, args) {
           _addMessage(
-            'Calling function: $name with arguments: $args',
+            'فراخوانی تابع: $name با آرگومان‌ها: $args',
             'system',
             isFunctionCall: true,
           );
@@ -265,7 +265,7 @@ class _AIAgentScreenState extends State<AIAgentScreen>
               ),
             );
             if (currentSession.title == 'New Chat' ||
-                currentSession.title == 'Default Chat') {
+                currentSession.title == 'چت پیش‌فرض') {
               final List<fb_ai.Content> initialChatContent = [
                 fb_ai.Content.text(
                   _messages.firstWhere((m) => m['sender'] == 'user')['content']
@@ -291,7 +291,7 @@ class _AIAgentScreenState extends State<AIAgentScreen>
         onError: (e) {
           debugPrint("[AIAgentScreen] Caught Exception: $e");
           _addErrorMessage(
-            "An error occurred with the AI service. Please check your Firebase project setup (including billing and enabled APIs) and your network connection. (Details: ${e.toString()})",
+                      "خطایی در سرویس هوش مصنوعی رخ داد. لطفاً تنظیمات پروژه Firebase خود (شامل صورتحساب و APIهای فعال) و اتصال شبکه خود را بررسی کنید. (جزئیات: ${e.toString()})",
           );
           if (mounted) {
             setState(() {
@@ -303,7 +303,7 @@ class _AIAgentScreenState extends State<AIAgentScreen>
     } on Exception catch (e) {
       debugPrint("[AIAgentScreen] Caught Exception: $e");
       _addErrorMessage(
-        "An error occurred with the AI service. Please check your Firebase project setup (including billing and enabled APIs) and your network connection. (Details: ${e.toString()})",
+                  "خطایی در سرویس هوش مصنوعی رخ داد. لطفاً تنظیمات پروژه Firebase خود (شامل صورتحساب و APIهای فعال) و اتصال شبکه خود را بررسی کنید. (جزئیات: ${e.toString()})",
       );
       if (mounted) {
         setState(() {
@@ -330,12 +330,12 @@ class _AIAgentScreenState extends State<AIAgentScreen>
       );
       if (tasks.isNotEmpty) {
         await appData.addStudyTasks(tasks);
-        return {'status': 'Success! ${tasks.length} tasks created.'};
+        return {'status': 'موفقیت! ${tasks.length} وظیفه ایجاد شد.'};
       } else {
-        return {'status': 'Failed to create a plan. No tasks were generated.'};
+        return {'status': 'ایجاد برنامه ناموفق بود. هیچ وظیفه‌ای تولید نشد.'};
       }
     } catch (e) {
-      return {'status': 'Error during plan creation: ${e.toString()}'};
+      return {'status': 'خطا در ایجاد برنامه: ${e.toString()}'};
     }
   }
 
@@ -347,11 +347,11 @@ class _AIAgentScreenState extends State<AIAgentScreen>
           .map((s) => appData.topics.firstWhere((t) => t.id == s.topicId).name)
           .toList();
       if (weakTopics.isEmpty) {
-        return {'weak_topics': 'User has not marked any topics as weak.'};
+        return {'weak_topics': 'کاربر هیچ مبحثی را به عنوان ضعیف علامت‌گذاری نکرده است.'};
       }
       return {'weak_topics': weakTopics};
     } catch (e) {
-      return {'error': 'Could not retrieve weak topics: ${e.toString()}'};
+      return {'error': 'امکان بازیابی مباحث ضعیف وجود نداشت: ${e.toString()}'};
     }
   }
 
@@ -373,7 +373,7 @@ class _AIAgentScreenState extends State<AIAgentScreen>
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   Text(
-                    'Chat Sessions',
+                    'جلسات چت',
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       color: Colors.white,
                       fontWeight: FontWeight.bold,
@@ -381,7 +381,7 @@ class _AIAgentScreenState extends State<AIAgentScreen>
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Manage your conversations',
+                    'مکالمات خود را مدیریت کنید',
                     style: Theme.of(
                       context,
                     ).textTheme.bodyMedium?.copyWith(color: Colors.white70),
@@ -449,7 +449,7 @@ class _AIAgentScreenState extends State<AIAgentScreen>
               color: Theme.of(context).colorScheme.primary,
             ),
             title: Text(
-              'New Chat',
+              'چت جدید',
               style: Theme.of(context).textTheme.titleMedium?.copyWith(
                 color: Theme.of(context).colorScheme.primary,
                 fontWeight: FontWeight.bold,
@@ -487,7 +487,7 @@ class _AIAgentScreenState extends State<AIAgentScreen>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Switched to chat session $sessionId'),
+            content: Text('به جلسه چت $sessionId تغییر یافت'),
             duration: const Duration(seconds: 2),
             behavior: SnackBarBehavior.floating,
             shape: RoundedRectangleBorder(
@@ -505,13 +505,13 @@ class _AIAgentScreenState extends State<AIAgentScreen>
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Delete Chat Session?'),
+          title: const Text('حذف جلسه چت؟'),
           content: Text(
-            'Are you sure you want to delete the chat session "${session.title}"? This action cannot be undone.',
+                        'آیا از حذف جلسه چت "${session.title}" مطمئن هستید؟ این عمل قابل بازگشت نیست.',
           ),
           actions: <Widget>[
             TextButton(
-              child: const Text('Cancel'),
+              child: const Text('لغو'),
               onPressed: () {
                 Navigator.of(context).pop();
               },
@@ -522,7 +522,7 @@ class _AIAgentScreenState extends State<AIAgentScreen>
                 Navigator.of(context).pop();
                 await _deleteChatSession(session.id!);
               },
-              child: const Text('Delete'),
+              child: const Text('حذف'),
             ),
           ],
         );
@@ -539,7 +539,7 @@ class _AIAgentScreenState extends State<AIAgentScreen>
     if (mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: const Text('Chat session deleted'),
+          content: const Text('جلسه چت حذف شد'),
           duration: const Duration(seconds: 2),
           behavior: SnackBarBehavior.floating,
           shape: RoundedRectangleBorder(
@@ -656,7 +656,7 @@ class _AIAgentScreenState extends State<AIAgentScreen>
           children: [
             Icon(Icons.check_circle, color: Colors.green, size: 20),
             SizedBox(width: 8),
-            Text('Copied to clipboard'),
+            Text('در کلیپ‌بورد کپی شد'),
           ],
         ),
         duration: const Duration(seconds: 2),
@@ -718,7 +718,7 @@ class _AIAgentScreenState extends State<AIAgentScreen>
                     vertical: 8,
                   ),
                   child: Text(
-                    'Message Options',
+                    'گزینه‌های پیام',
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
                     ),
@@ -727,18 +727,18 @@ class _AIAgentScreenState extends State<AIAgentScreen>
                 const Divider(height: 24),
                 _buildBottomSheetOption(
                   Icons.copy_all_outlined,
-                  'Copy',
+                  'کپی',
                   () => _copyMessage(text),
                 ),
                 _buildBottomSheetOption(
                   Icons.share_outlined,
-                  'Share',
+                  'اشتراک‌گذاری',
                   () => _shareMessage(text),
                 ),
                 if (isUser)
                   _buildBottomSheetOption(
                     Icons.edit_outlined,
-                    'Edit',
+                    'ویرایش',
                     () => _editMessage(text),
                   ),
                 const SizedBox(height: 16),
@@ -783,7 +783,7 @@ class _AIAgentScreenState extends State<AIAgentScreen>
       appBar: AppBar(
         title: Consumer<AppDataProvider>(
           builder: (context, appData, child) {
-            String appBarTitle = 'AI Study Assistant';
+            String appBarTitle = 'دستیار هوش مصنوعی مطالعه';
             final currentSessionId = appData.currentChatSessionId;
             if (currentSessionId != null) {
               final session = appData.chatSessions.firstWhere(
@@ -807,7 +807,7 @@ class _AIAgentScreenState extends State<AIAgentScreen>
           builder: (context) => IconButton(
             icon: const Icon(Icons.menu_rounded),
             onPressed: () => Scaffold.of(context).openDrawer(),
-            tooltip: 'Chat History',
+            tooltip: 'تاریخچه چت',
             style: IconButton.styleFrom(
               backgroundColor: colorScheme.primary.withOpacity(0.1),
               foregroundColor: colorScheme.primary,
@@ -932,7 +932,7 @@ class _AIAgentScreenState extends State<AIAgentScreen>
             ),
             const SizedBox(height: 32),
             Text(
-              'Konkur AI Study Assistant',
+              'برنامه ریز هوشمند کنکور',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                 fontWeight: FontWeight.bold,
                 color: Theme.of(context).colorScheme.primary,
@@ -941,7 +941,7 @@ class _AIAgentScreenState extends State<AIAgentScreen>
             ),
             const SizedBox(height: 16),
             Text(
-              'Get personalized study plans, review strategies, and academic guidance tailored to your needs.',
+                            'برنامه‌های مطالعاتی شخصی‌سازی شده، استراتژی‌های مرور و راهنمایی تحصیلی متناسب با نیازهای خود را دریافت کنید.',
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                 color: Theme.of(context).hintColor,
                 height: 1.5,
@@ -959,34 +959,34 @@ class _AIAgentScreenState extends State<AIAgentScreen>
   Widget _buildSuggestionChips() {
     final categories = [
       {
-        'title': 'Study Planning',
+        'title': 'برنامه‌ریزی مطالعه',
         'suggestions': [
           {
-            'text': 'Create a 7-day study plan',
+            'text': 'یک برنامه مطالعاتی ۷ روزه ایجاد کن',
             'icon': Icons.calendar_today_outlined,
           },
-          {'text': 'Help me plan for finals', 'icon': Icons.school_outlined},
+          {'text': 'به من در برنامه‌ریزی برای امتحانات نهایی کمک کن', 'icon': Icons.school_outlined},
         ],
       },
       {
-        'title': 'Topic Assistance',
+        'title': 'کمک در مباحث',
         'suggestions': [
           {
-            'text': 'What are my weakest topics?',
+            'text': 'ضعیف‌ترین مباحث من کدامند؟',
             'icon': Icons.trending_down_outlined,
           },
-          {'text': 'Help me review Physics', 'icon': Icons.science_outlined},
+          {'text': 'به من در مرور فیزیک کمک کن', 'icon': Icons.science_outlined},
         ],
       },
       {
-        'title': 'Learning Strategies',
+        'title': 'استراتژی‌های یادگیری',
         'suggestions': [
           {
-            'text': 'Study tips for better focus',
+            'text': 'نکات مطالعه برای تمرکز بهتر',
             'icon': Icons.psychology_outlined,
           },
           {
-            'text': 'How to remember formulas?',
+            'text': 'چگونه فرمول‌ها را به خاطر بسپارم؟',
             'icon': Icons.lightbulb_outline,
           },
         ],
@@ -996,7 +996,7 @@ class _AIAgentScreenState extends State<AIAgentScreen>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'Try asking me...',
+          'از من بپرسید...',
           style: Theme.of(
             context,
           ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
@@ -1253,7 +1253,7 @@ class _AIAgentScreenState extends State<AIAgentScreen>
                 Icon(Icons.check_circle_outline, color: Colors.green, size: 20),
                 const SizedBox(width: 8),
                 Text(
-                  'Function Result',
+                  'نتیجه تابع',
                   style: Theme.of(context).textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -1267,7 +1267,7 @@ class _AIAgentScreenState extends State<AIAgentScreen>
                   style: Theme.of(context).textTheme.bodyMedium,
                   children: [
                     const TextSpan(
-                      text: 'Status: ',
+                      text: 'وضعیت: ',
                       style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                     TextSpan(text: status),
@@ -1276,7 +1276,7 @@ class _AIAgentScreenState extends State<AIAgentScreen>
               ),
             if (weakTopics != null) ...[
               Text(
-                'Weakest Topics:',
+                'ضعیف‌ترین مباحث:',
                 style: Theme.of(
                   context,
                 ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.bold),
@@ -1357,11 +1357,11 @@ class _AIAgentScreenState extends State<AIAgentScreen>
     final now = DateTime.now();
     final diff = now.difference(timestamp);
     if (diff.inMinutes < 1) {
-      return 'Just now';
+      return 'همین الان';
     } else if (diff.inMinutes < 60) {
-      return '${diff.inMinutes}m ago';
+      return '${diff.inMinutes} دقیقه پیش';
     } else if (diff.inHours < 24) {
-      return '${diff.inHours}h ago';
+      return '${diff.inHours} ساعت پیش';
     } else {
       return '${timestamp.day}/${timestamp.month}';
     }
@@ -1406,7 +1406,7 @@ class _AIAgentScreenState extends State<AIAgentScreen>
                         maxLength: 1000,
                         onChanged: (value) => setState(() {}),
                         decoration: const InputDecoration(
-                          hintText: 'Ask for a study plan or chat...',
+                          hintText: 'درخواست برنامه مطالعاتی یا چت...',
                           border: InputBorder.none,
                           contentPadding: EdgeInsets.symmetric(
                             horizontal: 20,

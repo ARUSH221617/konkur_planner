@@ -56,18 +56,18 @@ class _MyPlanScreenState extends State<MyPlanScreen> {
       barrierDismissible: false,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: Text('Feedback for ${task.taskType}'),
+          title: Text('بازخورد برای ${task.taskType}'),
           content: TextField(
             controller: feedbackController,
             decoration: const InputDecoration(
-              labelText: 'Your feedback (e.g., what you learned, difficulties)',
+              labelText: 'بازخورد شما (مثلاً چه چیزی یاد گرفتید، مشکلات)',
               border: OutlineInputBorder(),
             ),
             maxLines: 3,
           ),
           actions: <Widget>[
             TextButton(
-              child: const Text('Submit'),
+              child: const Text('ثبت'),
               onPressed: () async {
                 await Provider.of<AppDataProvider>(
                   context,
@@ -99,7 +99,7 @@ class _MyPlanScreenState extends State<MyPlanScreen> {
             icon: Icon(
               _showAllTasks ? Icons.calendar_today : Icons.calendar_view_month,
             ),
-            tooltip: _showAllTasks ? "Show Today's Tasks" : "Show All Tasks",
+            tooltip: _showAllTasks ? "نمایش وظایف امروز" : "نمایش همه وظایف",
             onPressed: () {
               setState(() {
                 _showAllTasks = !_showAllTasks;
@@ -127,8 +127,8 @@ class _MyPlanScreenState extends State<MyPlanScreen> {
             return Center(
               child: Text(
                 _showAllTasks
-                    ? 'No study plan generated yet. Go to AI Agent to create one!'
-                    : 'No tasks for today. You can view all tasks or create a new plan.',
+                    ? 'هنوز برنامه مطالعاتی ایجاد نشده است. برای ایجاد برنامه به دستیار هوش مصنوعی بروید!'
+                    : 'وظیفه‌ای برای امروز وجود ندارد. می‌توانید همه وظایف را مشاهده کنید یا یک برنامه جدید ایجاد کنید.',
               ),
             );
           }
@@ -204,13 +204,13 @@ class _MyPlanScreenState extends State<MyPlanScreen> {
                         trailing: task.status == 'pending'
                             ? IconButton(
                                 icon: const Icon(Icons.play_arrow),
-                                tooltip: 'Start Task',
+                                tooltip: 'شروع وظیفه',
                                 onPressed: () => _startTimer(task),
                               )
                             : task.status == 'paused'
                             ? IconButton(
                                 icon: const Icon(Icons.play_arrow),
-                                tooltip: 'Resume Task',
+                                tooltip: 'ادامه وظیفه',
                                 onPressed: () => _startTimer(task),
                               )
                             : Text(task.status),

@@ -42,7 +42,7 @@ class MyApp extends StatelessWidget {
     return ChangeNotifierProvider(
       create: (context) => AppDataProvider(),
       child: MaterialApp.router(
-        title: 'Konkur AI Study Planner',
+        title: 'برنامه ریز هوشمند کنکور',
         debugShowCheckedModeBanner: false,
         locale: const Locale("fa", "IR"),
         supportedLocales: const [Locale("fa", "IR"), Locale("en", "US")],

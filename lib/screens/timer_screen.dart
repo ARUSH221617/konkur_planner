@@ -75,7 +75,7 @@ class _TimerScreenState extends State<TimerScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Task: ${widget.task.taskType}'),
+        title: Text('وظیفه: ${widget.task.taskType}'),
         automaticallyImplyLeading: false,
       ),
       body: Center(
@@ -97,7 +97,7 @@ class _TimerScreenState extends State<TimerScreen> {
                 ),
                 const SizedBox(width: 40),
                 ElevatedButton(
-                  child: const Text('Stop for now'),
+                  child: const Text('فعلاً متوقف کن'),
                   onPressed: () {
                     _timer?.cancel();
                     Navigator.of(context).pop('paused');
@@ -105,7 +105,7 @@ class _TimerScreenState extends State<TimerScreen> {
                 ),
                 const SizedBox(width: 20),
                 ElevatedButton(
-                  child: const Text('End Task'),
+                  child: const Text('پایان وظیفه'),
                   onPressed: () {
                     _timer?.cancel();
                     Navigator.of(context).pop('completed');

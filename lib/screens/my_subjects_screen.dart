@@ -31,9 +31,9 @@ class _MySubjectsScreenState extends State<MySubjectsScreen> {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
               } else if (snapshot.hasError) {
-                return Center(child: Text('Error: ${snapshot.error}'));
+                return Center(child: Text('خطا: ${snapshot.error}'));
               } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                return const Center(child: Text('No topics available.'));
+                return const Center(child: Text('مبحثی در دسترس نیست.'));
               }
 
               final topicsWithSelection = snapshot.data!;

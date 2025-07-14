@@ -13,7 +13,7 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  String _userName = 'Konkur Planner User';
+  String _userName = 'کاربر برنامه ریز کنکور';
   String? _userEmail;
   DateTime? _userBirthdate;
 
@@ -38,7 +38,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _editUserName() async {
     final newNameController = TextEditingController(text: _userName);
     final newName = await _showEditDialog(
-      title: 'Edit User Name',
+      title: 'ویرایش نام کاربری',
       controller: newNameController,
     );
 
@@ -54,7 +54,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _editUserEmail() async {
     final newEmailController = TextEditingController(text: _userEmail);
     final newEmail = await _showEditDialog(
-      title: 'Edit Email',
+      title: 'ویرایش ایمیل',
       controller: newEmailController,
       keyboardType: TextInputType.emailAddress,
     );
@@ -156,15 +156,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
           controller: controller,
           autofocus: true,
           keyboardType: keyboardType,
-          decoration: const InputDecoration(hintText: 'Enter value'),
+          decoration: const InputDecoration(hintText: 'مقدار را وارد کنید'),
         ),
         actions: [
           TextButton(
-            child: const Text('Cancel'),
+            child: const Text('لغو'),
             onPressed: () => Navigator.of(context).pop(),
           ),
           TextButton(
-            child: const Text('Save'),
+            child: const Text('ذخیره'),
             onPressed: () {
               Navigator.of(context).pop(controller.text);
             },
@@ -188,7 +188,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Settings'),
+        title: const Text('تنظیمات'),
         backgroundColor: Theme.of(context).colorScheme.primary,
         foregroundColor: Colors.white,
       ),
@@ -196,25 +196,25 @@ class _SettingsScreenState extends State<SettingsScreen> {
         children: <Widget>[
           const ListTile(
             title: Text(
-              'User Information',
+              'اطلاعات کاربر',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
           ),
           ListTile(
             leading: const Icon(Icons.person),
-            title: const Text('User Name'),
+            title: const Text('نام کاربری'),
             subtitle: Text(_userName),
             onTap: _editUserName,
           ),
           ListTile(
             leading: const Icon(Icons.email),
-            title: const Text('Email'),
+            title: const Text('ایمیل'),
             subtitle: Text(_userEmail ?? 'Not set'),
             onTap: _editUserEmail,
           ),
           ListTile(
             leading: const Icon(Icons.cake),
-            title: const Text('Birthdate'),
+            title: const Text('تاریخ تولد'),
             subtitle: Text(
               _userBirthdate != null
                   ? (() {
@@ -222,23 +222,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       final birthdateJalali = Jalali.fromDateTime(
                         birthdate,
                       ).formatter;
-                      return '${birthdateJalali.yyyy}/${birthdateJalali.mm}/${birthdateJalali.dd} (Age: ${_calculateAge(birthdate)})';
+                      return '${birthdateJalali.yyyy}/${birthdateJalali.mm}/${birthdateJalali.dd} (سن: ${_calculateAge(birthdate)})';
                     })()
-                  : 'Not set',
+                  : 'تنظیم نشده',
             ),
             onTap: _selectBirthdate,
           ),
           const Divider(),
           const ListTile(
             title: Text(
-              'Actions',
+              'عملیات',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
           ),
           ListTile(
             leading: const Icon(Icons.delete_forever, color: Colors.red),
             title: const Text(
-              'Delete My Plan',
+              'حذف برنامه من',
               style: TextStyle(color: Colors.red),
             ),
             onTap: () => _confirmDelete(context),
@@ -253,19 +253,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (BuildContext context) {
         return AlertDialog(
-          title: const Text('Confirm Delete'),
+          title: const Text('تایید حذف'),
           content: const Text(
-            'Are you sure you want to delete your entire study plan? This action cannot be undone.',
+                        'آیا از حذف کل برنامه مطالعاتی خود مطمئن هستید؟ این عمل قابل بازگشت نیست.',
           ),
           actions: <Widget>[
             TextButton(
-              child: const Text('Cancel'),
+              child: const Text('لغو'),
               onPressed: () {
                 Navigator.of(context).pop();
               },
             ),
             TextButton(
-              child: const Text('Delete', style: TextStyle(color: Colors.red)),
+              child: const Text('حذف', style: TextStyle(color: Colors.red)),
               onPressed: () {
                 Provider.of<AppDataProvider>(
                   context,
@@ -273,7 +273,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ).deleteAllTasks();
                 Navigator.of(context).pop();
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Study plan deleted.')),
+                  const SnackBar(content: Text('برنامه مطالعاتی حذف شد.')),
                 );
               },
             ),

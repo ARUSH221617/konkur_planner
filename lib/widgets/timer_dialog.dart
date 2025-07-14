@@ -88,7 +88,7 @@ class _TimerDialogState extends State<TimerDialog> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text('Task: ${widget.task.taskType}'),
+      title: Text('وظیفه: ${widget.task.taskType}'),
       content: SingleChildScrollView(
         child: ListBody(
           children: <Widget>[
@@ -101,7 +101,7 @@ class _TimerDialogState extends State<TimerDialog> {
             TextField(
               controller: _feedbackController,
               decoration: const InputDecoration(
-                labelText: 'Your feedback (e.g., what you learned, difficulties)',
+                labelText: 'بازخورد شما (مثلاً چه چیزی یاد گرفتید، مشکلات)',
                 border: OutlineInputBorder(),
               ),
               maxLines: 3,
@@ -115,7 +115,7 @@ class _TimerDialogState extends State<TimerDialog> {
           onPressed: _togglePause,
         ),
         TextButton(
-          child: const Text('Mark as Completed'),
+          child: const Text('علامت‌گذاری به عنوان تکمیل شده'),
           onPressed: () {
             _timer?.cancel();
             _markAsCompleted();
