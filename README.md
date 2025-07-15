@@ -4,7 +4,7 @@
 
 The Iranian National University Entrance Exam (Konkur) is a highly competitive and challenging milestone for students in Iran. Preparing for it requires meticulous planning, consistent effort, and adaptive strategies. This responsive Flutter application, the **Konkur AI Study Planner (برنامه ریز هوشمند کنکور)**, aims to simplify and optimize this preparation journey.
 
-This app is specifically designed for students tackling the Konkur, with an initial focus on the **Math & Physics track**. It leverages the power of the Gemini AI to create dynamic, personalized, and optimized study plans. These plans are based on the official subject weighting (`بودجه بندی`), the user's self-assessed strengths in various topics, and the crucial factor of time remaining until the exam. The application also provides full Persian (Farsi) localization, including a Jalali date picker, to ensure a natural and intuitive user experience for Iranian students.
+This app is specifically designed for students tackling the Konkur, with an initial focus on the **Math & Physics track**. It leverages the power of the Gemini AI to create dynamic, personalized, and optimized study plans. These plans are based on the official subject weighting (`بودجه بندی`), the user's self-assessed strengths in various topics, and the crucial factor of time remaining until the exam. The application now provides full Persian (Farsi) localization for all UI text, including a Jalali date picker, to ensure a natural and intuitive user experience for Iranian students.
 
 A key feature is its **local-first approach**: all user data, including study progress and personal notes, is stored securely on the device using an SQLite database. This ensures user privacy, allows for full offline access to study plans and materials, and makes the app reliable even without a constant internet connection. To further aid students, the app incorporates features like push notifications for task reminders, an interactive timer to help manage study sessions effectively, and a native splash screen for a smooth startup experience.
 
@@ -151,6 +151,7 @@ The effectiveness of the Konkur AI Study Planner stems from a smart interaction 
     * **User's Strength Profile:** The topics the user has self-identified as strengths.
     * **Historical Performance & Feedback:** Crucially, a summary or relevant snippets of `user_feedback` from previously completed study tasks (e.g., "had trouble with integration by parts," "aced the geometry quiz").
     * **User's Current Request:** The specific instruction or query from the user, such as "create a 7-day plan" or "help me prepare for my physics midterm focusing on mechanics."
+    * **User's Personal Information:** User's name, email, and birthdate (used to calculate age) are now included to further personalize the study plan.
 
 2.  **Intelligent Prompt Construction (Prompt Engineering):**
     * The application doesn't just send raw data. It constructs a detailed and carefully worded prompt for the Gemini API.
